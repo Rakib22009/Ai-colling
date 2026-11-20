@@ -1,0 +1,201 @@
+{
+  "entities": {
+    "UserPrivate": {
+      "title": "UserPrivate",
+      "description": "Private user account record containing verified email and primary language defaults.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "format": "email", "minLength": 3, "maxLength": 254 },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "photoURL": { "type": "string", "maxLength": 1024 },
+        "handle": { "type": "string", "minLength": 2, "maxLength": 48, "pattern": "^[a-z0-9_\\-]+$" },
+        "preferredLanguage": { "type": "string", "enum": ["bn", "id"] },
+        "voiceName": { "type": "string", "enum": ["Zephyr", "Kore", "Puck", "Charon", "Fenrir"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "displayName", "handle", "preferredLanguage", "voiceName", "createdAt", "updatedAt"]
+    },
+    "PublicProfile": {
+      "title": "PublicProfile",
+      "description": "Shareable user profile without private PII, accessible by unique profile URL.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "photoURL": { "type": "string", "maxLength": 1024 },
+        "handle": { "type": "string", "minLength": 2, "maxLength": 48, "pattern": "^[a-z0-9_\\-]+$" },
+        "preferredLanguage": { "type": "string", "enum": ["bn", "id"] },
+        "voiceName": { "type": "string", "enum": ["Zephyr", "Kore", "Puck", "Charon", "Fenrir"] },
+        "bio": { "type": "string", "maxLength": 280 },
+        "online": { "type": "boolean" },
+        "lastSeen": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "displayName", "handle", "preferredLanguage", "voiceName", "online", "updatedAt"]
+    },
+    "EmailIndex": {
+      "title": "EmailIndex",
+      "description": "SHA-256 email hash lookup pointing to a user UID for direct Gmail friend requests without exposing raw email lists.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "photoURL": { "type": "string", "maxLength": 1024 },
+        "handle": { "type": "string", "minLength": 2, "maxLength": 48, "pattern": "^[a-z0-9_\\-]+$" },
+        "preferredLanguage": { "type": "string", "enum": ["bn", "id"] },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "displayName", "handle", "preferredLanguage", "updatedAt"]
+    },
+    "HandleReservation": {
+      "title": "HandleReservation",
+      "description": "Maps unique lowercase profile handle slugs to user UIDs.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "handle": { "type": "string", "minLength": 2, "maxLength": 48, "pattern": "^[a-z0-9_\\-]+$" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "handle", "createdAt"]
+    },
+    "UserSettings": {
+      "title": "UserSettings",
+      "description": "Private user translation, audio, caption, notification, and privacy preferences.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "autoTranslate": { "type": "boolean" },
+        "defaultAudioMode": { "type": "string", "enum": ["translated", "original"] },
+        "captionsEnabled": { "type": "boolean" },
+        "saveTranscripts": { "type": "boolean" },
+        "notificationsEnabled": { "type": "boolean" },
+        "autoDetectLanguage": { "type": "boolean" },
+        "dialectNote": { "type": "string", "maxLength": 200 },
+        "theme": { "type": "string", "enum": ["light", "dark"] },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "autoTranslate", "defaultAudioMode", "captionsEnabled", "saveTranscripts", "notificationsEnabled", "autoDetectLanguage", "theme", "updatedAt"]
+    },
+    "FriendRequest": {
+      "title": "FriendRequest",
+      "description": "Gmail-initiated friend request between two authenticated users.",
+      "type": "object",
+      "properties": {
+        "fromUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "fromName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "fromPhoto": { "type": "string", "maxLength": 1024 },
+        "fromHandle": { "type": "string", "minLength": 2, "maxLength": 48 },
+        "fromLang": { "type": "string", "enum": ["bn", "id"] },
+        "toUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "toName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "toPhoto": { "type": "string", "maxLength": 1024 },
+        "toHandle": { "type": "string", "minLength": 2, "maxLength": 48 },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["fromUid", "fromName", "fromHandle", "fromLang", "toUid", "toName", "toHandle", "status", "createdAt", "updatedAt"]
+    },
+    "Friendship": {
+      "title": "Friendship",
+      "description": "Confirmed bidirectional friendship enabling direct voice and video calls.",
+      "type": "object",
+      "properties": {
+        "userA": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userB": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userAName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "userBName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "userAPhoto": { "type": "string", "maxLength": 1024 },
+        "userBPhoto": { "type": "string", "maxLength": 1024 },
+        "userAHandle": { "type": "string", "minLength": 2, "maxLength": 48 },
+        "userBHandle": { "type": "string", "minLength": 2, "maxLength": 48 },
+        "userALang": { "type": "string", "enum": ["bn", "id"] },
+        "userBLang": { "type": "string", "enum": ["bn", "id"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userA", "userB", "userAName", "userBName", "userAHandle", "userBHandle", "userALang", "userBLang", "createdAt"]
+    },
+    "NotificationItem": {
+      "title": "NotificationItem",
+      "description": "Real-time notification event for incoming calls, friend requests, and system alerts.",
+      "type": "object",
+      "properties": {
+        "toUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "fromUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "fromName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "fromPhoto": { "type": "string", "maxLength": 1024 },
+        "type": { "type": "string", "enum": ["call_incoming", "friend_request", "friend_accepted", "system"] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 140 },
+        "body": { "type": "string", "minLength": 1, "maxLength": 400 },
+        "callId": { "type": "string", "maxLength": 128 },
+        "callType": { "type": "string", "enum": ["voice", "video", "none"] },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["toUid", "fromUid", "fromName", "type", "title", "body", "read", "createdAt"]
+    },
+    "CallRecord": {
+      "title": "CallRecord",
+      "description": "Metadata for voice and video calls between two authenticated participants.",
+      "type": "object",
+      "properties": {
+        "callerUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "callerName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "callerPhoto": { "type": "string", "maxLength": 1024 },
+        "callerLang": { "type": "string", "enum": ["bn", "id"] },
+        "calleeUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "calleeName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "calleePhoto": { "type": "string", "maxLength": 1024 },
+        "calleeLang": { "type": "string", "enum": ["bn", "id"] },
+        "type": { "type": "string", "enum": ["voice", "video"] },
+        "status": { "type": "string", "enum": ["ringing", "active", "ended", "missed", "rejected"] },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "endedAt": { "type": "string", "format": "date-time" },
+        "durationSeconds": { "type": "number" },
+        "summaryText": { "type": "string", "maxLength": 4000 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["callerUid", "callerName", "callerLang", "calleeUid", "calleeName", "calleeLang", "type", "status", "startedAt", "durationSeconds", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": { "$ref": "#/entities/UserPrivate" },
+      "description": "Private authenticated user document isolated from other users."
+    },
+    "/publicProfiles/{uid}": {
+      "schema": { "$ref": "#/entities/PublicProfile" },
+      "description": "Publicly shareable profile metadata without PII, keyed by user UID."
+    },
+    "/emailIndex/{emailHash}": {
+      "schema": { "$ref": "#/entities/EmailIndex" },
+      "description": "SHA-256 email hash index for exact Gmail lookup when sending friend requests."
+    },
+    "/handles/{handle}": {
+      "schema": { "$ref": "#/entities/HandleReservation" },
+      "description": "Unique handle slug mapping to user UID for shareable profile URLs."
+    },
+    "/userSettings/{uid}": {
+      "schema": { "$ref": "#/entities/UserSettings" },
+      "description": "Private user audio, caption, translation, and notification settings."
+    },
+    "/friendRequests/{requestId}": {
+      "schema": { "$ref": "#/entities/FriendRequest" },
+      "description": "Pending and resolved Gmail friend requests between users."
+    },
+    "/friendships/{friendshipId}": {
+      "schema": { "$ref": "#/entities/Friendship" },
+      "description": "Confirmed friend connections authorized to place direct calls."
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/NotificationItem" },
+      "description": "User-scoped real-time notification feed for calls and friend requests."
+    },
+    "/calls/{callId}": {
+      "schema": { "$ref": "#/entities/CallRecord" },
+      "description": "Voice and video call signaling metadata and call history logs."
+    }
+  }
+}

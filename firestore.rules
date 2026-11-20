@@ -1,0 +1,383 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidHandle(handle) {
+      return handle is string && handle.size() >= 2 && handle.size() <= 48 && handle.matches('^[a-z0-9_\\-]+$');
+    }
+
+    function isValidEmailHash(hash) {
+      return hash is string && hash.size() == 64 && hash.matches('^[a-f0-9]+$');
+    }
+
+    function isValidLang(lang) {
+      return lang == 'bn' || lang == 'id';
+    }
+
+    function isValidVoice(voice) {
+      return voice == 'Zephyr' || voice == 'Kore' || voice == 'Puck' || voice == 'Charon' || voice == 'Fenrir';
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isPairMemberById(pairId) {
+      return pairId.matches('^' + request.auth.uid + '_[a-zA-Z0-9_\\-]+$')
+        || pairId.matches('^[a-zA-Z0-9_\\-]+_' + request.auth.uid + '$');
+    }
+
+    function isValidUserPrivate(data) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'handle', 'preferredLanguage', 'voiceName', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'displayName', 'photoURL', 'handle', 'preferredLanguage', 'voiceName', 'createdAt', 'updatedAt'])
+        && data.uid == request.auth.uid
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 254
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 1024))
+        && isValidHandle(data.handle)
+        && isValidLang(data.preferredLanguage)
+        && isValidVoice(data.voiceName)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPublicProfile(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'handle', 'preferredLanguage', 'voiceName', 'online', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'photoURL', 'handle', 'preferredLanguage', 'voiceName', 'bio', 'online', 'lastSeen', 'updatedAt'])
+        && data.uid == request.auth.uid
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 1024))
+        && isValidHandle(data.handle)
+        && isValidLang(data.preferredLanguage)
+        && isValidVoice(data.voiceName)
+        && (!('bio' in data) || (data.bio is string && data.bio.size() <= 280))
+        && data.online is bool
+        && (!('lastSeen' in data) || data.lastSeen is timestamp)
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidEmailIndex(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'handle', 'preferredLanguage', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'photoURL', 'handle', 'preferredLanguage', 'updatedAt'])
+        && data.uid == request.auth.uid
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 1024))
+        && isValidHandle(data.handle)
+        && isValidLang(data.preferredLanguage)
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidHandleReservation(data) {
+      return data.keys().hasAll(['uid', 'handle', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'handle', 'createdAt'])
+        && data.uid == request.auth.uid
+        && isValidHandle(data.handle)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidUserSettings(data) {
+      return data.keys().hasAll(['uid', 'autoTranslate', 'defaultAudioMode', 'captionsEnabled', 'saveTranscripts', 'notificationsEnabled', 'autoDetectLanguage', 'theme', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'autoTranslate', 'defaultAudioMode', 'captionsEnabled', 'saveTranscripts', 'notificationsEnabled', 'autoDetectLanguage', 'dialectNote', 'theme', 'updatedAt'])
+        && data.uid == request.auth.uid
+        && data.autoTranslate is bool
+        && (data.defaultAudioMode == 'translated' || data.defaultAudioMode == 'original')
+        && data.captionsEnabled is bool
+        && data.saveTranscripts is bool
+        && data.notificationsEnabled is bool
+        && data.autoDetectLanguage is bool
+        && (!('dialectNote' in data) || (data.dialectNote is string && data.dialectNote.size() <= 200))
+        && (data.theme == 'light' || data.theme == 'dark')
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFriendRequest(data) {
+      return data.keys().hasAll(['fromUid', 'fromName', 'fromHandle', 'fromLang', 'toUid', 'toName', 'toHandle', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['fromUid', 'fromName', 'fromPhoto', 'fromHandle', 'fromLang', 'toUid', 'toName', 'toPhoto', 'toHandle', 'status', 'createdAt', 'updatedAt'])
+        && isValidId(data.fromUid)
+        && isValidId(data.toUid)
+        && data.fromUid != data.toUid
+        && data.fromName is string && data.fromName.size() >= 1 && data.fromName.size() <= 100
+        && data.toName is string && data.toName.size() >= 1 && data.toName.size() <= 100
+        && (!('fromPhoto' in data) || (data.fromPhoto is string && data.fromPhoto.size() <= 1024))
+        && (!('toPhoto' in data) || (data.toPhoto is string && data.toPhoto.size() <= 1024))
+        && isValidHandle(data.fromHandle)
+        && isValidHandle(data.toHandle)
+        && isValidLang(data.fromLang)
+        && (data.status == 'pending' || data.status == 'accepted' || data.status == 'rejected')
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFriendship(data) {
+      return data.keys().hasAll(['userA', 'userB', 'userAName', 'userBName', 'userAHandle', 'userBHandle', 'userALang', 'userBLang', 'createdAt'])
+        && data.keys().hasOnly(['userA', 'userB', 'userAName', 'userBName', 'userAPhoto', 'userBPhoto', 'userAHandle', 'userBHandle', 'userALang', 'userBLang', 'createdAt'])
+        && isValidId(data.userA)
+        && isValidId(data.userB)
+        && data.userA != data.userB
+        && data.userAName is string && data.userAName.size() >= 1 && data.userAName.size() <= 100
+        && data.userBName is string && data.userBName.size() >= 1 && data.userBName.size() <= 100
+        && (!('userAPhoto' in data) || (data.userAPhoto is string && data.userAPhoto.size() <= 1024))
+        && (!('userBPhoto' in data) || (data.userBPhoto is string && data.userBPhoto.size() <= 1024))
+        && isValidHandle(data.userAHandle)
+        && isValidHandle(data.userBHandle)
+        && isValidLang(data.userALang)
+        && isValidLang(data.userBLang)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasAll(['toUid', 'fromUid', 'fromName', 'type', 'title', 'body', 'read', 'createdAt'])
+        && data.keys().hasOnly(['toUid', 'fromUid', 'fromName', 'fromPhoto', 'type', 'title', 'body', 'callId', 'callType', 'read', 'createdAt'])
+        && isValidId(data.toUid)
+        && isValidId(data.fromUid)
+        && data.fromName is string && data.fromName.size() >= 1 && data.fromName.size() <= 100
+        && (!('fromPhoto' in data) || (data.fromPhoto is string && data.fromPhoto.size() <= 1024))
+        && (data.type == 'call_incoming' || data.type == 'friend_request' || data.type == 'friend_accepted' || data.type == 'system')
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 140
+        && data.body is string && data.body.size() >= 1 && data.body.size() <= 400
+        && (!('callId' in data) || (data.callId is string && data.callId.size() <= 128))
+        && (!('callType' in data) || (data.callType == 'voice' || data.callType == 'video' || data.callType == 'none'))
+        && data.read is bool
+        && data.createdAt is timestamp;
+    }
+
+    function isValidCallRecord(data) {
+      return data.keys().hasAll(['callerUid', 'callerName', 'callerLang', 'calleeUid', 'calleeName', 'calleeLang', 'type', 'status', 'startedAt', 'durationSeconds', 'updatedAt'])
+        && data.keys().hasOnly(['callerUid', 'callerName', 'callerPhoto', 'callerLang', 'calleeUid', 'calleeName', 'calleePhoto', 'calleeLang', 'type', 'status', 'startedAt', 'endedAt', 'durationSeconds', 'summaryText', 'updatedAt'])
+        && isValidId(data.callerUid)
+        && isValidId(data.calleeUid)
+        && data.callerUid != data.calleeUid
+        && data.callerName is string && data.callerName.size() >= 1 && data.callerName.size() <= 100
+        && data.calleeName is string && data.calleeName.size() >= 1 && data.calleeName.size() <= 100
+        && (!('callerPhoto' in data) || (data.callerPhoto is string && data.callerPhoto.size() <= 1024))
+        && (!('calleePhoto' in data) || (data.calleePhoto is string && data.calleePhoto.size() <= 1024))
+        && isValidLang(data.callerLang)
+        && isValidLang(data.calleeLang)
+        && (data.type == 'voice' || data.type == 'video')
+        && (data.status == 'ringing' || data.status == 'active' || data.status == 'ended' || data.status == 'missed' || data.status == 'rejected')
+        && data.startedAt is timestamp
+        && (!('endedAt' in data) || data.endedAt is timestamp)
+        && data.durationSeconds is number && data.durationSeconds >= 0 && data.durationSeconds <= 86400
+        && (!('summaryText' in data) || (data.summaryText is string && data.summaryText.size() <= 4000))
+        && data.updatedAt is timestamp;
+    }
+
+    // 1. Private user accounts (PII protected: owner only)
+    match /users/{uid} {
+      allow get: if isValidId(uid) && isOwner(uid);
+      allow list: if false;
+      allow create: if isValidId(uid) && isVerifiedUser() && isOwner(uid)
+        && isValidUserPrivate(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(uid) && isVerifiedUser() && isOwner(uid)
+        && isValidUserPrivate(incoming())
+        && incoming().uid == existing().uid
+        && incoming().email == existing().email
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'handle', 'preferredLanguage', 'voiceName', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    // 2. Public shareable profiles (no PII)
+    match /publicProfiles/{uid} {
+      allow get: if isValidId(uid) && isSignedIn();
+      allow list: if false;
+      allow create: if isValidId(uid) && isVerifiedUser() && isOwner(uid)
+        && isValidPublicProfile(incoming())
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(uid) && isVerifiedUser() && isOwner(uid)
+        && isValidPublicProfile(incoming())
+        && incoming().uid == existing().uid
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'handle', 'preferredLanguage', 'voiceName', 'bio', 'online', 'lastSeen', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    // 3. SHA-256 email hash index for exact Gmail lookup
+    match /emailIndex/{emailHash} {
+      allow get: if isValidEmailHash(emailHash) && isSignedIn();
+      allow list: if false;
+      allow create: if isValidEmailHash(emailHash) && isVerifiedUser()
+        && isValidEmailIndex(incoming())
+        && incoming().updatedAt == request.time;
+      allow update: if isValidEmailHash(emailHash) && isVerifiedUser()
+        && existing().uid == request.auth.uid
+        && isValidEmailIndex(incoming())
+        && incoming().uid == existing().uid
+        && incoming().updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    // 4. Unique handle reservations
+    match /handles/{handle} {
+      allow get: if isValidHandle(handle) && isSignedIn();
+      allow list: if false;
+      allow create: if isValidHandle(handle) && isVerifiedUser()
+        && isValidHandleReservation(incoming())
+        && incoming().handle == handle
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isValidHandle(handle) && isVerifiedUser() && existing().uid == request.auth.uid;
+    }
+
+    // 5. Private user settings
+    match /userSettings/{uid} {
+      allow get: if isValidId(uid) && isOwner(uid);
+      allow list: if false;
+      allow create: if isValidId(uid) && isVerifiedUser() && isOwner(uid)
+        && isValidUserSettings(incoming())
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(uid) && isVerifiedUser() && isOwner(uid)
+        && isValidUserSettings(incoming())
+        && incoming().uid == existing().uid
+        && incoming().updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    // 6. Friend requests (supports safe existence checks on deterministic fromUid_toUid IDs)
+    match /friendRequests/{requestId} {
+      allow get: if isValidId(requestId) && isSignedIn() && (
+        (resource == null && isPairMemberById(requestId)) ||
+        (resource != null && (existing().fromUid == request.auth.uid || existing().toUid == request.auth.uid))
+      );
+      allow list: if isSignedIn()
+        && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
+      allow create: if isValidId(requestId) && isVerifiedUser()
+        && isValidFriendRequest(incoming())
+        && incoming().fromUid == request.auth.uid
+        && requestId == incoming().fromUid + '_' + incoming().toUid
+        && incoming().status == 'pending'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/publicProfiles/$(incoming().toUid));
+      allow update: if isValidId(requestId) && isVerifiedUser()
+        && isValidFriendRequest(incoming())
+        && existing().status == 'pending'
+        && existing().toUid == request.auth.uid
+        && (incoming().status == 'accepted' || incoming().status == 'rejected')
+        && incoming().fromUid == existing().fromUid
+        && incoming().toUid == existing().toUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
+      allow delete: if isValidId(requestId) && isVerifiedUser()
+        && (existing().fromUid == request.auth.uid || existing().toUid == request.auth.uid);
+    }
+
+    // 7. Confirmed friendships (supports safe existence checks on deterministic sorted uidA_uidB IDs)
+    match /friendships/{friendshipId} {
+      allow get: if isValidId(friendshipId) && isSignedIn() && (
+        (resource == null && isPairMemberById(friendshipId)) ||
+        (resource != null && (existing().userA == request.auth.uid || existing().userB == request.auth.uid))
+      );
+      allow list: if isSignedIn()
+        && (resource.data.userA == request.auth.uid || resource.data.userB == request.auth.uid);
+      allow create: if isValidId(friendshipId) && isVerifiedUser()
+        && isValidFriendship(incoming())
+        && (incoming().userA == request.auth.uid || incoming().userB == request.auth.uid)
+        && friendshipId == incoming().userA + '_' + incoming().userB
+        && incoming().createdAt == request.time
+        && exists(/databases/$(database)/documents/publicProfiles/$(incoming().userA))
+        && exists(/databases/$(database)/documents/publicProfiles/$(incoming().userB));
+      allow update: if false;
+      allow delete: if isValidId(friendshipId) && isVerifiedUser()
+        && (existing().userA == request.auth.uid || existing().userB == request.auth.uid);
+    }
+
+    // 8. Real-time notifications
+    match /notifications/{notificationId} {
+      allow get: if isValidId(notificationId) && isSignedIn()
+        && resource != null && existing().toUid == request.auth.uid;
+      allow list: if isSignedIn()
+        && resource.data.toUid == request.auth.uid;
+      allow create: if isValidId(notificationId) && isVerifiedUser()
+        && isValidNotification(incoming())
+        && incoming().fromUid == request.auth.uid
+        && incoming().read == false
+        && incoming().createdAt == request.time
+        && exists(/databases/$(database)/documents/publicProfiles/$(incoming().toUid));
+      allow update: if isValidId(notificationId) && isVerifiedUser()
+        && existing().toUid == request.auth.uid
+        && isValidNotification(incoming())
+        && incoming().toUid == existing().toUid
+        && incoming().fromUid == existing().fromUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+      allow delete: if isValidId(notificationId) && isVerifiedUser()
+        && existing().toUid == request.auth.uid;
+    }
+
+    // 9. Voice & Video Call Records
+    match /calls/{callId} {
+      allow get: if isValidId(callId) && isSignedIn()
+        && resource != null
+        && (existing().callerUid == request.auth.uid || existing().calleeUid == request.auth.uid);
+      allow list: if isSignedIn()
+        && (resource.data.callerUid == request.auth.uid || resource.data.calleeUid == request.auth.uid);
+      allow create: if isValidId(callId) && isVerifiedUser()
+        && isValidCallRecord(incoming())
+        && incoming().callerUid == request.auth.uid
+        && incoming().status == 'ringing'
+        && incoming().durationSeconds == 0
+        && incoming().startedAt == request.time
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/publicProfiles/$(incoming().calleeUid));
+      allow update: if isValidId(callId) && isVerifiedUser()
+        && isValidCallRecord(incoming())
+        && (existing().callerUid == request.auth.uid || existing().calleeUid == request.auth.uid)
+        && incoming().callerUid == existing().callerUid
+        && incoming().calleeUid == existing().calleeUid
+        && incoming().type == existing().type
+        && incoming().startedAt == existing().startedAt
+        && incoming().updatedAt == request.time
+        && (
+          // Action: Callee accepts ringing call
+          (existing().status == 'ringing' && existing().calleeUid == request.auth.uid && incoming().status == 'active' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])) ||
+          // Action: Callee rejects ringing call
+          (existing().status == 'ringing' && existing().calleeUid == request.auth.uid && incoming().status == 'rejected' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'endedAt', 'updatedAt'])) ||
+          // Action: Caller cancels or call times out as missed
+          (existing().status == 'ringing' && existing().callerUid == request.auth.uid && (incoming().status == 'missed' || incoming().status == 'ended') && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'endedAt', 'updatedAt'])) ||
+          // Action: Either participant switches language mid-call
+          (existing().status == 'active' && incoming().status == 'active' && incoming().diff(existing()).affectedKeys().hasOnly(['callerLang', 'calleeLang', 'updatedAt'])) ||
+          // Action: Either participant ends active call
+          (existing().status == 'active' && incoming().status == 'ended' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'endedAt', 'durationSeconds', 'updatedAt'])) ||
+          // Action: Save AI summary text after call ends
+          (existing().status == 'ended' && incoming().status == 'ended' && incoming().diff(existing()).affectedKeys().hasOnly(['summaryText', 'updatedAt']))
+        );
+      allow delete: if false;
+    }
+
+    // 10. Connection check path
+    match /test/{docId} {
+      allow get: if isSignedIn();
+    }
+  }
+}

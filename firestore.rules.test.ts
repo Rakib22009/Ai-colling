@@ -1,0 +1,96 @@
+/**
+ * Security Rule Verification Suite — Dirty Dozen Payloads
+ * Documents expected PERMISSION_DENIED invariants enforced by firestore.rules.
+ */
+export const dirtyDozenSecuritySpec = [
+  {
+    name: '1. Cross-User Profile Overwrite',
+    collection: 'publicProfiles/userA',
+    operation: 'update',
+    actorUid: 'userB',
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    name: '2. PII Scraping on /users',
+    collection: 'users',
+    operation: 'list',
+    actorUid: 'userB',
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    name: '3. Email Index Enumeration',
+    collection: 'emailIndex',
+    operation: 'list',
+    actorUid: 'userB',
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    name: '4. Shadow Field Injection (isAdmin: true)',
+    collection: 'users/userA',
+    operation: 'create',
+    actorUid: 'userA',
+    payload: { uid: 'userA', isAdmin: true },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    name: '5. Handle Hijacking',
+    collection: 'handles/rohan',
+    operation: 'update',
+    actorUid: 'userB',
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    name: '6. Spoofed Friend Request Sender',
+    collection: 'friendRequests/req1',
+    operation: 'create',
+    actorUid: 'userB',
+    payload: { fromUid: 'userA', toUid: 'userC', status: 'pending' },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    name: '7. Sender Self-Accepting Friend Request',
+    collection: 'friendRequests/req1',
+    operation: 'update',
+    actorUid: 'userA',
+    payload: { status: 'accepted' },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    name: '8. Terminal Request Re-open',
+    collection: 'friendRequests/req1',
+    operation: 'update',
+    actorUid: 'userB',
+    payload: { status: 'pending' },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    name: '9. Notification Forgery',
+    collection: 'notifications/notif1',
+    operation: 'create',
+    actorUid: 'userB',
+    payload: { fromUid: 'userA', toUid: 'userC' },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    name: '10. Unauthorized Notification Read',
+    collection: 'notifications/notif1',
+    operation: 'get',
+    actorUid: 'userB',
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    name: '11. Call Record Hijack by Non-Participant',
+    collection: 'calls/call1',
+    operation: 'update',
+    actorUid: 'userC',
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    name: '12. Resource Poisoning (>280 char bio) & Timestamp Forgery',
+    collection: 'publicProfiles/userA',
+    operation: 'update',
+    actorUid: 'userA',
+    payload: { bio: 'x'.repeat(350) },
+    expected: 'PERMISSION_DENIED',
+  },
+] as const;

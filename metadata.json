@@ -1,0 +1,12 @@
+{
+  "name": "LinguaConnect AI",
+  "description": "Real-time bidirectional Bangla ↔ Indonesian AI voice and video calling platform with live captions, Gmail friend requests, Google Contacts import, and Web Push notifications.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera",
+    "notifications"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
